@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GeoReport — GEO Audit Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3e;
+      --accent: #6c63ff;
+      --accent2: #00d4aa;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --pass: #10b981;
+      --partial: #f59e0b;
+      --fail: #ef4444;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a1d27 0%, #12151e 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .logo-icon {
+      width: 64px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo-icon svg { width: 100%; height: 100%; }
+    header h1 { font-size: 1.5rem; font-weight: 700; }
+    header span { font-size: 0.85rem; color: var(--muted); margin-left: 8px; }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 40px 20px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title svg { opacity: 0.8; }
+
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; }
+
+    input[type="password"], input[type="text"], textarea {
+      width: 100%;
+      background: #0f1117;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.9rem;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 110px; }
+
+    .api-row { display: flex; gap: 10px; align-items: flex-end; }
+    .api-row input { flex: 1; }
+    .btn-save {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .btn-save:hover { border-color: var(--accent); color: var(--accent); }
+
+    .hint { font-size: 0.78rem; color: var(--muted); margin-top: 6px; }
+    .hint a { color: var(--accent); text-decoration: none; }
+    .hint a:hover { text-decoration: underline; }
+
+    .btn-run {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      letter-spacing: 0.02em;
+    }
+    .btn-run:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+    .btn-run:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    #progress-wrap { display: none; margin-bottom: 20px; }
+    .progress-bar-bg {
+      background: var(--border);
+      border-radius: 99px;
+      height: 6px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+    #progress-label { font-size: 0.82rem; color: var(--muted); margin-top: 6px; }
+
+    #report { display: none; }
+    .report-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .report-header h2 { font-size: 1.2rem; font-weight: 700; }
+    .btn-export {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      transition: all 0.2s;
+    }
+    .btn-export:hover { border-color: var(--accent2); color: var(--accent2); }
+
+    .site-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .site-card-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .site-card-header:hover { background: rgba(108,99,255,0.05); }
+    .site-card-header .url-text {
+      flex: 1;
+      font-size: 0.9rem;
+      word-break: break-all;
+      color: var(--muted);
+    }
+    .site-card-header .url-text strong { color: var(--text); display: block; }
+
+    .score-ring {
+      position: relative;
+      width: 64px; height: 64px;
+      flex-shrink: 0;
+    }
+    .score-ring svg { transform: rotate(-90deg); }
+    .score-ring .score-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .score-num { font-size: 1.1rem; font-weight: 700; line-height: 1; }
+    .score-grade { font-size: 0.7rem; color: var(--muted); }
+
+    .badge-grade {
+      font-size: 1.4rem;
+      font-weight: 800;
+      padding: 4px 12px;
+      border-radius: 8px;
+    }
+    .grade-A { color: var(--pass); background: rgba(16,185,129,0.1); }
+    .grade-B { color: #3b82f6; background: rgba(59,130,246,0.1); }
+    .grade-C { color: var(--partial); background: rgba(245,158,11,0.1); }
+    .grade-D { color: #f97316; background: rgba(249,115,22,0.1); }
+    .grade-F { color: var(--fail); background: rgba(239,68,68,0.1); }
+
+    .chevron { transition: transform 0.3s; color: var(--muted); }
+    .chevron.open { transform: rotate(180deg); }
+
+    .site-card-body { display: none; padding: 20px 24px; }
+    .site-card-body.open { display: block; }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .metric-item {
+      background: #0f1117;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .metric-name { font-size: 0.75rem; color: var(--muted); margin-bottom: 8px; }
+    .metric-bar-bg {
+      background: var(--border);
+      border-radius: 99px;
+      height: 5px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .metric-bar-fill { height: 100%; border-radius: 99px; }
+    .status-pass .metric-bar-fill { background: var(--pass); }
+    .status-partial .metric-bar-fill { background: var(--partial); }
+    .status-fail .metric-bar-fill { background: var(--fail); }
+    .metric-score { font-size: 0.82rem; font-weight: 600; }
+    .status-pass .metric-score { color: var(--pass); }
+    .status-partial .metric-score { color: var(--partial); }
+    .status-fail .metric-score { color: var(--fail); }
+    .metric-detail { font-size: 0.72rem; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+      margin-top: 18px;
+    }
+    .reco-list { list-style: none; }
+    .reco-list li {
+      font-size: 0.85rem;
+      color: var(--text);
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+    }
+    .reco-list li:last-child { border-bottom: none; }
+    .reco-list li::before {
+      content: "→";
+      color: var(--accent2);
+      flex-shrink: 0;
+    }
+
+    pre.schema-block {
+      background: #0f1117;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 0.78rem;
+      color: #a5f3d0;
+      overflow-x: auto;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .error-card {
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 0.85rem;
+      color: #fca5a5;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 0.85rem;
+      color: var(--text);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 9999;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">
+    <svg viewBox="0 0 80 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="10" fill="#C5D600"/>
+      <path d="M8 22 L20 44" stroke="#C5D600" stroke-width="14" stroke-linecap="round"/>
+      <path d="M28 44 L44 8 L60 44 L76 8" stroke="#00897B" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <h1>GeoReport</h1>
+  <span>GEO Audit Dashboard</span>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+      </svg>
+      Конфигурация API
+    </div>
+    <label>Google Gemini API Key</label>
+    <div class="api-row">
+      <input type="password" id="api-key" placeholder="AIzaSy..." autocomplete="off" />
+      <button class="btn-save" onclick="saveKey()">Сохранить</button>
+    </div>
+    <p class="hint">
+      Ключ используется для генерации рекомендованного JSON-LD schema.
+      Получить: <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a>
+    </p>
+    <div id="key-status" style="margin-top:8px; font-size:0.8rem; color:var(--muted);"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </svg>
+      URL-адреса для аудита
+    </div>
+    <label>Введите URL-адреса (по одному на строку)</label>
+    <textarea id="urls-input" placeholder="https://example.com&#10;https://stripe.com&#10;https://yoursite.io"></textarea>
+  </div>
+
+  <button class="btn-run" id="run-btn" onclick="runAudit()">
+    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <polygon points="5 3 19 12 5 21 5 3"/>
+    </svg>
+    Запустить GEO Аудит
+  </button>
+
+  <div id="progress-wrap">
+    <div class="card-title" style="margin-bottom:8px;">Выполняется аудит...</div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <div id="progress-label">Подготовка...</div>
+  </div>
+
+  <div id="report">
+    <div class="report-header">
+      <h2>Результаты аудита</h2>
+      <button class="btn-export" onclick="exportReport()">Экспорт HTML</button>
+    </div>
+    <div id="report-body"></div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+  const API_BASE = window.location.origin;
+
+  let savedKey = localStorage.getItem('georeport_api_key') || '';
+  if (savedKey) {
+    document.getElementById('api-key').value = savedKey;
+    document.getElementById('key-status').textContent = 'Ключ загружен из localStorage';
+  }
+
+  function saveKey() {
+    const k = document.getElementById('api-key').value.trim();
+    if (!k) { showToast('Введите API ключ'); return; }
+    localStorage.setItem('georeport_api_key', k);
+    savedKey = k;
+    document.getElementById('key-status').innerHTML = 'Ключ сохранен';
+    showToast('API ключ сохранен');
+  }
+
+  function showToast(msg, ms = 2800) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), ms);
+  }
+
+  async function runAudit() {
+    const apiKey = document.getElementById('api-key').value.trim();
+    const rawUrls = document.getElementById('urls-input').value.trim();
+
+    if (!apiKey) { showToast('Введите Gemini API ключ'); return; }
+    if (!rawUrls) { showToast('Введите хотя бы один URL'); return; }
+
+    const urls = rawUrls.split('\n').map(u => u.trim()).filter(Boolean);
+
+    const btn = document.getElementById('run-btn');
+    const progressWrap = document.getElementById('progress-wrap');
+    const progressFill = document.getElementById('progress-fill');
+    const progressLabel = document.getElementById('progress-label');
+    const report = document.getElementById('report');
+    const reportBody = document.getElementById('report-body');
+
+    btn.disabled = true;
+    progressWrap.style.display = 'block';
+    report.style.display = 'none';
+    reportBody.innerHTML = '';
+
+    const results = [];
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      const pct = Math.round((i / urls.length) * 100);
+      progressFill.style.width = pct + '%';
+      progressLabel.textContent = `[${i + 1}/${urls.length}] Аудит: ${url}`;
+
+      try {
+        const resp = await fetch(`${API_BASE}/api/audit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, api_key: apiKey })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          results.push({ url, error: data.error || `HTTP ${resp.status}` });
+        } else {
+          results.push({ url, data });
+        }
+      } catch (e) {
+        results.push({ url, error: `Ошибка подключения: ${e.message}` });
+      }
+    }
+
+    progressFill.style.width = '100%';
+    progressLabel.textContent = 'Готово!';
+    setTimeout(() => { progressWrap.style.display = 'none'; }, 700);
+
+    btn.disabled = false;
+    report.style.display = 'block';
+    renderReport(results, reportBody);
+  }
+
+  function gradeClass(g) { return 'grade-' + (g || 'F'); }
+
+  function ringPath(score) {
+    const R = 26, C = 32;
+    const circ = 2 * Math.PI * R;
+    const fill = (score / 100) * circ;
+    const col = score >= 80 ? '#10b981' : score >= 60 ? '#3b82f6' : score >= 40 ? '#f59e0b' : '#ef4444';
+    return `
+      <circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="#2a2d3e" stroke-width="5"/>
+      <circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="${col}" stroke-width="5"
+        stroke-dasharray="${fill} ${circ}" stroke-linecap="round"/>
+    `;
+  }
+
+  function renderReport(results, container) {
+    results.forEach((r, idx) => {
+      const div = document.createElement('div');
+      div.className = 'site-card';
+
+      if (r.error) {
+        div.innerHTML = `
+          <div class="site-card-header">
+            <div class="url-text"><strong>${r.url}</strong></div>
+            <span style="color:var(--fail); font-size:0.8rem;">ОШИБКА</span>
+          </div>
+          <div class="site-card-body open">
+            <div class="error-card">${r.error}</div>
+          </div>`;
+        container.appendChild(div);
+        return;
+      }
+
+      const d = r.data;
+      const score = d.geo_score || 0;
+      const grade = d.geo_grade || 'F';
+
+      let metricsHtml = (d.metrics || []).map(m => {
+        const pct = Math.round((m.score / m.max_score) * 100);
+        const statusClass = 'status-' + (m.status || 'fail');
+        return `
+          <div class="metric-item ${statusClass}">
+            <div class="metric-name">${m.metric}</div>
+            <div class="metric-bar-bg"><div class="metric-bar-fill" style="width:${pct}%"></div></div>
+            <div class="metric-score">${m.score}/${m.max_score} · ${m.status.toUpperCase()}</div>
+            <div class="metric-detail">${m.detail || ''}</div>
+          </div>`;
+      }).join('');
+
+      let recoHtml = '';
+      if (d.recommendations?.length) {
+        recoHtml = `<div class="section-label">Рекомендации</div>
+          <ul class="reco-list">${d.recommendations.map(rc => `<li>${rc}</li>`).join('')}</ul>`;
+      }
+
+      let schemaHtml = '';
+      if (d.recommended_schema) {
+        schemaHtml = `<div class="section-label">JSON-LD Schema</div>
+          <pre class="schema-block">${JSON.stringify(d.recommended_schema, null, 2)}</pre>`;
+      }
+
+      div.innerHTML = `
+        <div class="site-card-header" onclick="toggleCard(this)">
+          <div class="score-ring">
+            <svg width="64" height="64" viewBox="0 0 64 64">${ringPath(score)}</svg>
+            <div class="score-text">
+              <span class="score-num">${score}</span>
+              <span class="score-grade">/ 100</span>
+            </div>
+          </div>
+          <div class="url-text">
+            <strong>${r.url}</strong>
+            <span style="font-size:0.75rem;">GEO Readiness Score</span>
+          </div>
+          <span class="badge-grade ${gradeClass(grade)}">${grade}</span>
+          <svg class="chevron" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+        <div class="site-card-body open" id="body-${idx}">
+          <div class="section-label">Метрики</div>
+          <div class="metrics-grid">${metricsHtml}</div>
+          ${recoHtml}
+          ${schemaHtml}
+        </div>`;
+      container.appendChild(div);
+    });
+  }
+
+  function toggleCard(header) {
+    const body = header.nextElementSibling;
+    const chev = header.querySelector('.chevron');
+    body.classList.toggle('open');
+    chev.classList.toggle('open');
+  }
+
+  function exportReport() {
+    const reportHtml = document.getElementById('report-body').innerHTML;
+    const full = `<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"/>
+<title>GeoReport Report — ${new Date().toLocaleDateString('ru-RU')}</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#0f1117;color:#e2e8f0;padding:40px;max-width:960px;margin:0 auto}
+  :root{--pass:#10b981;--partial:#f59e0b;--fail:#ef4444;--border:#2a2d3e;--muted:#8892a4;--accent:#6c63ff;--accent2:#00d4aa;--surface:#1a1d27}
+  .site-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:20px;overflow:hidden}
+  .site-card-header{display:flex;align-items:center;gap:16px;padding:20px 24px;border-bottom:1px solid var(--border)}
+  .site-card-body{padding:20px 24px}
+  .score-ring{position:relative;width:64px;height:64px;flex-shrink:0}
+  .score-ring svg{transform:rotate(-90deg)}
+  .score-ring .score-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .score-num{font-size:1.1rem;font-weight:700;line-height:1}
+  .score-grade{font-size:0.7rem;color:var(--muted)}
+  .url-text{flex:1;font-size:.9rem;word-break:break-all;color:var(--muted)}
+  .url-text strong{color:#e2e8f0;display:block}
+  .badge-grade{font-size:1.4rem;font-weight:800;padding:4px 12px;border-radius:8px}
+  .grade-A{color:var(--pass);background:rgba(16,185,129,.1)}
+  .grade-B{color:#3b82f6;background:rgba(59,130,246,.1)}
+  .grade-C{color:var(--partial);background:rgba(245,158,11,.1)}
+  .grade-D{color:#f97316;background:rgba(249,115,22,.1)}
+  .grade-F{color:var(--fail);background:rgba(239,68,68,.1)}
+  .metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:20px}
+  .metric-item{background:#0f1117;border:1px solid var(--border);border-radius:10px;padding:14px}
+  .metric-name{font-size:.75rem;color:var(--muted);margin-bottom:8px}
+  .metric-bar-bg{background:var(--border);border-radius:99px;height:5px;overflow:hidden;margin-bottom:6px}
+  .metric-bar-fill{height:100%;border-radius:99px}
+  .status-pass .metric-bar-fill{background:var(--pass)}
+  .status-partial .metric-bar-fill{background:var(--partial)}
+  .status-fail .metric-bar-fill{background:var(--fail)}
+  .metric-score{font-size:.82rem;font-weight:600}
+  .status-pass .metric-score{color:var(--pass)}
+  .status-partial .metric-score{color:var(--partial)}
+  .status-fail .metric-score{color:var(--fail)}
+  .metric-detail{font-size:.72rem;color:var(--muted);margin-top:6px;line-height:1.4}
+  .section-label{font-size:.75rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;margin-top:18px}
+  .reco-list{list-style:none;padding:0}
+  .reco-list li{font-size:.85rem;color:#e2e8f0;padding:8px 0;border-bottom:1px solid var(--border);display:flex;gap:10px}
+  .reco-list li::before{content:"→";color:var(--accent2);flex-shrink:0}
+  pre.schema-block{background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:14px;font-size:.78rem;color:#a5f3d0;overflow-x:auto;line-height:1.6;white-space:pre-wrap;word-break:break-all}
+  .error-card{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:14px 18px;font-size:.85rem;color:#fca5a5}
+  .chevron{display:none}
+</style>
+</head><body>
+<h1 style="margin-bottom:24px;font-size:1.4rem;">GeoReport — Отчет аудита · ${new Date().toLocaleString('ru-RU')}</h1>
+${reportHtml}
+</body></html>`;
+    const blob = new Blob([full], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `georeport-report-${Date.now()}.html`;
+    a.click();
+    showToast('Отчет сохранен');
+  }
+</script>
+</body>
+</html>
